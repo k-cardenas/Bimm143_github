@@ -1,0 +1,258 @@
+---
+title: "lab14 - mini project"
+date: "May 15, 2025" 
+author: "Karina Cardenas, A16742606"
+format: pdf
+toc: true
+---
+
+Here we will perform a complete RNASeq analysis from counts to pathways and biological interpertation.
+
+# Required Packages
+
+```{r, message = FALSE}
+library(DESeq2)
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+library(pathview)
+library(gageData)
+library(gage)
+```
+
+# Data Import
+
+```{r}
+colData <- read.csv("GSE37704_metadata.csv", row.names=1)
+countData <- read.csv("GSE37704_featurecounts.csv", row.names=1)
+```
+
+```{r}
+head(colData)
+head(countData)
+```
+
+
+Check the correspondance of colData rows and countData columns 
+```{r}
+rownames(colData)
+```
+
+```{r}
+colnames(countData)
+```
+
+# Tidy
+
+> Q1. Complete the code below to remove the troublesome first column from countData
+
+```{r}
+counts <- countData[,-1]
+```
+
+```{r}
+head(counts)
+```
+
+```{r}
+all(rownames(colData) == colnames(counts) ) 
+```
+
+# Remove zero count genes 
+
+We will have rows in `counts` for genes that we can not say anything about because they have zero expression in the particular tissue we are looking at. 
+
+> Q2. Complete the code below to filter countData to exclude genes (i.e. rows) where we have 0 read count across all samples (i.e. columns).
+
+if the `rowSums()` is zero then a given gene (i.e. row) had no count data and we should exclude these genes from tfurther consideration 
+```{r}
+to.keep <- rowSums(counts) != 0 
+
+cleancounts <- counts[to.keep,]
+```
+
+> Q3. How many genes do we have left? 
+
+```{r}
+nrow(cleancounts)
+```
+
+# Setup DESeq object for analysis 
+
+```{r}
+dds = DESeqDataSetFromMatrix(countData=cleancounts,
+                             colData=colData,
+                             design= ~condition)
+```
+
+# Run DESeq analysis 
+
+```{r}
+dds <- DESeq(dds)
+```
+
+# Extract the results 
+
+```{r}
+res <- results(dds)
+
+head(res)
+```
+
+# Add Gene Annotation 
+
+```{r}
+columns(org.Hs.eg.db)
+```
+```{r}
+res$symbol <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res),      # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="SYMBOL",          # The new format we want to add
+                     multiVals="first")
+```
+
+```{r}
+res$entrez <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res),      # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="ENTREZID",          # The new format we want to add
+                     multiVals="first")
+```
+
+```{r}
+res$genename <- mapIds(org.Hs.eg.db,
+                     keys=row.names(res),      # Our genenames
+                     keytype="ENSEMBL",        # The format of our genenames
+                     column="GENENAME",          # The new format we want to add
+                     multiVals="first")
+
+head(res)
+```
+
+# Save my results to a CSV file 
+
+```{r}
+write.csv(res, file = "annotated_results.csv")
+```
+
+# Pathway Anlysis 
+
+```{r}
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+
+# Focus on signaling and metabolic pathways only
+kegg.sets.hs = kegg.sets.hs[sigmet.idx.hs]
+
+# Examine the first 3 pathways
+head(kegg.sets.hs, 3)
+```
+
+```{r}
+foldchanges = res$log2FoldChange
+names(foldchanges) = res$entrez
+head(foldchanges)
+```
+
+```{r}
+keggres = gage(foldchanges, gsets=kegg.sets.hs)
+```
+
+```{r}
+attributes(keggres)
+head(keggres$less)
+```
+```{r}
+keggrespathways <- rownames(keggres$greater)[1:5]
+```
+
+```{r}
+keggresids = substr(keggrespathways, start=1, stop=8)
+keggresids
+```
+
+> Q4. Can you do the same procedure as above to plot the pathview figures for the top 5 down-reguled pathways?
+
+```{r}
+keggrespathways_down <- rownames(keggres$less)[1:5]
+```
+
+```{r}
+keggresids_down = substr(keggrespathways_down, start=1, stop=8)
+keggresids_down
+```
+
+# Gene Ontology
+
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+
+# Focus on Biological Process subset of GO
+gobpsets = go.sets.hs[go.subs.hs$BP]
+
+gobpres = gage(foldchanges, gsets=gobpsets, same.dir=TRUE)
+
+lapply(gobpres, head)
+```
+
+# Reactome Analysis 
+```{r}
+sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
+print(paste("Total number of significant genes:", length(sig_genes)))
+```
+
+```{r}
+write.table(sig_genes, file="significant_genes.txt", row.names=FALSE, col.names=FALSE, quote=FALSE)
+```
+
+
+# Result visualization 
+
+## volcano plot
+
+```{r}
+library(ggplot2)
+
+mycols <- rep("black", nrow(res))
+mycols[res$log2FoldChange <= -2] <- "blue"
+mycols[res$log2FoldChange >= 2] <- "red"
+mycols[res$padj >= 0.05] <- "orange"
+
+ggplot(as.data.frame(res)) + 
+  aes(x = res$log2FoldChange, y = -log(res$padj)) + 
+  geom_point(col = mycols, alpha = 0.5) + 
+  geom_vline(xintercept = c(-2, 2), linetype = "dashed", color = "red") + 
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") + 
+  theme_minimal() + 
+  labs(x = "log2FC", y = "adj. p-value", title = "Log2FC vs P-value")
+```
+
+
+## Pathways
+```{r}
+pathview(gene.data=foldchanges, pathway.id="hsa04110")
+```
+![Figure 1. Pathway of hsa04110](hsa04110.pathview.png)
+
+```{r, message = FALSE}
+pathview(gene.data=foldchanges, pathway.id=keggresids, species="hsa")
+```
+
+
+### Upregulated Pathway
+![Figure 2. Pathway of hsa04640, does not include ids "hsa04630" "hsa00140" "hsa04142" "hsa04330](hsa04640.pathview.png)
+
+```{r}
+pathview(gene.data=foldchanges, pathway.id=keggresids_down, species="hsa")
+```
+
+### Downregulated Pathviews 
+![Figure 3](hsa04110.pathview.png) 
+![Figure 4](hsa03030.pathview.png)
+![Figure 5](hsa03013.pathview.png)
+![Figure 6](hsa03440.pathview.png) 
+![Figure 7](hsa04114.pathview.png)
+Then, to perform pathway analysis online go to the Reactome website (https://reactome.org/PathwayBrowser/#TOOL=AT). Select “choose file” to upload your significant gene list. Then, select the parameters “Project to Humans”, then click “Analyze”.
+
+![Reactome - Sensory Perception](R-HSA-381753.png)
