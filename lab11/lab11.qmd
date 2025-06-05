@@ -1,0 +1,95 @@
+---
+title: "Lab11"
+author: "Karina Cardenas, A16742606"
+format: html
+toc: true
+---
+
+## Comparative structure analysis of Adenylate Kinase
+
+Load up the packages we will need for analysis of protein structure sets 
+```{r}
+library(bio3d)
+library(NGLVieweR)
+```
+
+> Q10. Which of the packages above is found only on BioConductor and not CRAN? 
+
+package found only in BioConductor is `msa` 
+
+> Q11. Which of the above packages is not found on BioConductor or CRAN?: 
+
+> Q12. True or False? Functions from the pak package can be used to install packages from 
+
+**TRUE**
+
+
+We will analyze the ADK starting with a single ADK database acession code: "1ake_A"
+```{r}
+id <- "1ake_A"
+
+aa <- get.seq("1ake_A")
+
+aa
+```
+
+> Q13. How many amino acids are in this sequence, i.e. how long is this sequence? 
+
+
+
+Now we can search the PDB database to find all related entries. 
+```{r}
+blast <- blast.pdb(aa)
+```
+
+```{r}
+attributes(blast)
+```
+
+```{r}
+head(blast$hit.tbl)
+```
+
+```{r}
+hits <- plot(blast)
+```
+
+Our "top hits" i.e the most similar entries in the database are
+```{r}
+hits$pdb.id
+```
+
+compress all ADK hits
+```{r}
+files <- get.pdb(hits$pdb.id, path="pdbs", split=TRUE, gzip=TRUE)
+```
+Alignment: Align and superimpose these structures
+```{r}
+pdbs <- pdbaln(files, fit = TRUE, exefile="msa")
+```
+sidenote: 
+```{r}
+library(bio3dview)
+view.pdbs(pdbs)
+```
+
+This is better but still difficult to see what is similar and different in all these structures or indeed learn much about how this family works. 
+
+Let's try PCA: 
+```{r}
+pc <- pca(pdbs)
+plot(pc)
+```
+
+```{r}
+plot(pc, pc.axes = 1:2)
+```
+```{r}
+view.pca(pc)
+```
+
+Write a PDB "trajectory" for mol-star
+```{r}
+mktrj(pc,file = "pca_results.pdb")
+```
+
