@@ -5,4 +5,6 @@ My classwork from [BIMM143_S25](https://bioboot.github.io/bimm143_S25/) Spring 2
 
 - 05 Advanced graphics with **gplot2**
 
-- 06 R functions 
+- 06 R functions
+
+- Note: Syntax to add files are [Filename](Address of file)
