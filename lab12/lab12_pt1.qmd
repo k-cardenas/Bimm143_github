@@ -1,0 +1,88 @@
+---
+title: "lab12"
+author: "Karina Cardenas, A16742606"
+date: "May 11, 2025"
+format: pdf
+toc: true
+---
+
+## Section 1: Gene proprtions in population 
+
+Finding the Proportion of Homozygous G|G genes in AMR,MXL descent 
+```{r}
+GG_proportion <- read.csv("sample_genotypes.csv")
+
+table(GG_proportion$Genotype..forward.strand.)
+```
+
+```{r}
+table(GG_proportion$Genotype..forward.strand.) / nrow(GG_proportion) * 100
+```
+
+
+Now lets look at a different population, I picked GBR.
+```{r}
+GBR_pop <- read.csv("GBR_pop.csv")
+
+head(GBR_pop)
+```
+
+
+Find the proportion of G|G
+```{r}
+round(table(GBR_pop$Genotype..forward.strand.)/nrow(GBR_pop) * 100, 2)
+```
+
+This variant that is associated with childhood asthma is more frequent in the GBR population than the MXL population. 
+
+
+## Section 4: plotting 
+
+One sample is obviously not enough to know what is happening in a population. You are
+interested in assessing genetic differences on a population scale. So, you processed about
+~230 samples and did the normalization on a genome level. Now, you want to find whether
+there is any association of the 4 asthma-associated SNPs (rs8067378…) on ORMDL3
+expression.
+
+
+The file below contains the Genotype expression results of one individual male with childhood asthma. Read this file into R and determine the sample size for each genotype and their corresponding median expression levels for each of these genotypes.
+```{r}
+expression <- read.table("Expression_genotype.txt")
+
+head(expression)
+```
+
+> Q.  how many samples do we have ? 
+
+```{r}
+nrow(expression)
+```
+
+> Q. sample size of genotype expression? 
+
+```{r}
+table(expression$geno)
+```
+
+> Q. Median Expression of genotypes? 
+
+```{r}
+exp_sum <- tapply(expression$exp, expression$geno, median, na.rm = TRUE)
+
+exp_sum
+```
+
+
+Generate a boxplot with a box per genotype, what could you infer from the relative expression value between A/A and G/G displayed in this plot? Does the SNP effect the expression of ORMDL3?
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ggplot(expression) + 
+  aes(x = geno, y = exp, fill = geno) + 
+  geom_boxplot(notch = TRUE) + 
+  geom_jitter(width = 0.2, size = 1, alpha = 0.2) + 
+  labs( x = "Genotype", y = "Expression")
+```
+
