@@ -1,0 +1,186 @@
+---
+title: "lab10: Structural Bioinformatics pt.1"
+author: "Karina Cardenas, A16742606"
+format: html
+toc: true
+---
+## The PDB Database
+The main repository of biomolecular structure data is called the [Protein Data Bank](https://www.rcsb.org/) (PDB for short). It is the second oldest database (after GenBank). 
+
+### Importing 
+```{r}
+file_name <- "Data Export Summary.csv"
+
+stats = read.csv(file_name, row.names = 1)
+stats
+```
+What is currently in the PDB? We can access current composition stats [here](https://www.rcsb.org/stats)
+
+> Q1: What percentage of structures in the PDB are solved by X-Ray and Electron Microscopy.
+
+X-Ray %: 82.37% and EM %: 11.30%
+```{r}
+x <- stats$X.ray
+
+y <- gsub(",", "",x)
+
+as.numeric(y)
+```
+
+Turn this snippet into a function so I can use it any time I have this comma problem. (i.e the other columns of this `stats` table)
+
+```{r}
+comma.sum <- function(x){
+  y <- gsub(",", "",x)
+
+  return(sum(as.numeric(y)))
+}
+```
+
+```{r}
+xray.sum <- comma.sum(stats$X.ray)
+
+em.sum <- comma.sum(stats$EM)
+
+total.sum <- comma.sum(stats$Total)
+```
+
+```{r}
+xray.sum / total.sum * 100
+```
+
+```{r}
+em.sum / total.sum * 100
+```
+
+> Q2: What proportion of structures in the PDB are protein?
+
+```{r}
+protein.sum <- sum(202990 + 13032 + 14516)
+
+total <- 235458
+
+protein.proportion <- protein.sum / total * 100
+protein.proportion
+```
+
+```{r}
+202990/252188522 * 100
+```
+
+
+> Q3: Type HIV in the PDB website search box on the home page and determine how many HIV-1 protease structures are in the current PDB?
+
+SKIPPED 
+
+## Visualizing with Mol - star
+
+Explore the HIV-1 Protease structure with PDB code: `1HSG`.
+Mol-star homepage at https://molstar.org/viewer/
+
+> Q4: Water molecules normally have 3 atoms. Why do we see just one atom per water molecule in this structure?
+
+The imaging resolution cannot capture the Hydrogen atoms, and only displays the oxygen atoms. In this image however water is toggled off and therefor the oxygen atoms surrounding the protein cannot be shown. 
+
+![Figure 1. A first view of HIV-Pr](1HSG.png)
+
+![Figure 2. Molecular surface showing the HIV1-Pr ligand fitted inside the pore of the polymer ](1HSG_pore.png)
+
+> Q5: There is a critical “conserved” water molecule in the binding site. Can you identify this water molecule? What residue number does this water molecule have
+
+Yes, HOH at position 308. Located in the pore of the polymer where the ligand resides. 
+
+> Q6. enerate and save a figure clearly showing the two distinct chains of HIV-protease along with the ligand. You might also consider showing the catalytic residues ASP 25 in each chain and the critical water (we recommend “Ball & Stick” for these side-chains). Add this figure to your Quarto document.
+
+![Figure 3. The catatilically important ASP 25 amino acids and drug interactiing HOH 308 water molecule](1HSG_water.png)
+
+## Using the Bio3d package in R 
+
+The Bio3D package is focused on structure bioinformatics analysis and allows us to read and analyze PDB (and related) data. 
+
+```{r}
+library(bio3d)
+```
+
+```{r}
+pdb <- read.pdb("1hsg")
+
+pdb
+```
+
+> Q7: How many amino acid residues are there in this pdb object? 
+
+198 
+
+> Q8: Name one of the two non-protein residues? 
+
+Water HOH and Merk MK1 
+
+> Q9: How many protein chains are in this structure?
+
+2 chains, A and B. 
+
+```{r}
+attributes(pdb)
+
+```
+
+We can see atom data with `pdb$atom`
+```{r}
+head(pdb$atom)
+```
+
+```{r}
+head(pdbseq(pdb))
+```
+
+
+## Visualization in R 
+
+We can make a quick 3D viz with the `view.pdb()` function:
+```{r}
+library(bio3dview)
+library(NGLVieweR)
+
+view.pdb(pdb, backgroundColor = "white", colorScheme = "chainname") |>
+  setSpin()
+```
+
+```{r}
+#select the amino acid 
+sel <- atom.select(pdb, resno=25)
+
+# and highlight them in spacefill representation
+view.pdb(pdb, cols=c("navy","lightblue", backgroundColor = "darkgrey"), 
+         highlight = sel,
+         highlight.style = "spacefill") |>
+  setRock()
+```
+
+## Predicting functional motions of a single structure 
+
+We can finish off today with a bioinformatics prediction of the functional motions of a protein. 
+
+```{r}
+adk <- read.pdb("6s36")
+
+adk
+```
+
+Flexibility Prediction: We will run a Normal Mode analysis(NMA)
+
+```{r}
+m <- nma(adk)
+```
+
+```{r}
+plot(m)
+```
+
+```{r}
+mktrj(m, file="adk_m7.pdb")
+```
+
+```{r}
+view.nma(m, pdb=adk)
+```
