@@ -11,7 +11,7 @@ My classwork from [BIMM143_S25](https://bioboot.github.io/bimm143_S25/) Spring 2
 
 - Lab 08 [Unsupervised Learning Mini-Project](https://github.com/k-cardenas/Bimm143_github/blob/main/lab08/lab08_mini_project.md)
 
-- Lab 09 [Halloween Candy Mini-Project]
+- Lab 09 [Halloween Candy Mini-Project](https://github.com/k-cardenas/Bimm143_github/blob/main/Lab09/lab09_halloween.qmd)
 
 - Lab 10 [Structural Bioinformatics (pt1)]
 
